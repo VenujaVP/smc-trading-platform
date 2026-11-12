@@ -23,31 +23,51 @@ def load_credentials_from_settings():
         from gui.utils.settings_manager import load_mt5_credentials
         creds = load_mt5_credentials()
         if creds:
-            global MT5_ACCOUNT, MT5_PASSWORD, MT5_SERVER, SYMBOL
+            global MT5_ACCOUNT, MT5_PASSWORD, MT5_SERVER
             MT5_ACCOUNT = creds['account']
             MT5_PASSWORD = creds['password']
             MT5_SERVER = creds['server']
-            SYMBOL = creds['symbol']
             return True
     except:
         pass
     return False
 
 # ============================================================================
-# TRADING SYMBOL
+# MULTI-SYMBOL TRADING CONFIGURATION
 # ============================================================================
-SYMBOL = "XAUUSD"  # Gold/USD - Can be changed in Settings
-SYMBOL_INFO = None  # Will be populated at runtime
+# List of symbols to trade (can be modified via GUI or settings)
+ACTIVE_SYMBOLS = ["XAUUSD"]  # Default: Gold only
+
+# Symbol-specific configurations (loaded dynamically)
+SYMBOL_CONFIGS = {}  # Will store per-symbol settings
 
 # ============================================================================
-# TIMEFRAME MAPPINGS (MT5 Constants)
+# TIMEFRAME MAPPINGS (MT5 Constants) - Now Configurable per Symbol
 # ============================================================================
-TIMEFRAMES = {
-    "HTF": mt5.TIMEFRAME_H4,      # Main Timeframe (4H)
-    "MAIN_CONF": mt5.TIMEFRAME_H1,  # Main Confirmation (1H)
-    "MINOR": mt5.TIMEFRAME_H1,     # Minor Timeframe (1H)
-    "ENTRY": mt5.TIMEFRAME_M15     # Entry Timeframe (15m)
+# String to MT5 constant mapping
+TIMEFRAME_MAP = {
+    "M1": mt5.TIMEFRAME_M1,
+    "M5": mt5.TIMEFRAME_M5,
+    "M15": mt5.TIMEFRAME_M15,
+    "M30": mt5.TIMEFRAME_M30,
+    "H1": mt5.TIMEFRAME_H1,
+    "H4": mt5.TIMEFRAME_H4,
+    "D1": mt5.TIMEFRAME_D1,
+    "W1": mt5.TIMEFRAME_W1,
+    "MN1": mt5.TIMEFRAME_MN1
 }
+
+# Default timeframe configuration (can be changed per symbol)
+DEFAULT_TIMEFRAMES = {
+    "MAIN": "H4",      # Main Market Structure (default 4H, configurable)
+    "MAIN_CONF": "H1",  # Main Confirmation (1H)
+    "MINOR": "H1",      # Minor Market Structure Shift (default 1H, configurable)
+    "ENTRY": "M15"      # Entry Timeframe (15m)
+}
+
+def get_timeframe_constant(tf_string):
+    """Convert timeframe string to MT5 constant."""
+    return TIMEFRAME_MAP.get(tf_string, mt5.TIMEFRAME_H4)
 
 # ============================================================================
 # PIVOT LOOKBACK PERIODS

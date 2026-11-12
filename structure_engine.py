@@ -84,8 +84,173 @@ def get_most_recent_pivot(df, pivot_series, return_price=False, use_high=True):
 
 
 # ============================================================================
-# BREAKOUT DETECTION (BODY-BASED)
+# BREAKOUT DETECTION (BODY-BASED) - UPDATED LOGIC
 # ============================================================================
+
+def detect_bullish_bos_first(df, lookback=5):
+    """
+    STEP 1: Detect Bullish Break of Structure FIRST (before finding pivots).
+    
+    Logic:
+    1. Calculate pivot highs using lookback period
+    2. Get the most recent valid pivot high
+    3. Check if latest candle BODY (close) breaks above that pivot high
+    
+    Args:
+        df: DataFrame with OHLC data
+        lookback: Pivot lookback period
+    
+    Returns:
+        (bos_detected: bool, pivot_high_price: float, pivot_low_price: float)
+    """
+    if df is None or df.empty or len(df) < lookback * 2 + 1:
+        return False, None, None
+    
+    # Calculate pivot highs and lows
+    pivot_highs = calculate_pivot_highs(df, lookback=lookback)
+    pivot_lows = calculate_pivot_lows(df, lookback=lookback)
+    
+    # Get most recent pivot high (resistance to break)
+    recent_pivot_high = get_most_recent_pivot(df, pivot_highs, return_price=True, use_high=True)
+    
+    if recent_pivot_high is None:
+        return False, None, None
+    
+    # Check if latest candle BODY closes ABOVE the pivot high
+    latest_close = df.iloc[-1]['close']
+    
+    if latest_close > recent_pivot_high:
+        # BOS detected! Now find the pivot low BEFORE this breakout
+        # Get the pivot low that was established before the most recent pivot high
+        pivot_low_price = get_pivot_low_before_high(df, pivot_highs, pivot_lows)
+        
+        logger.info(f"🚀 BULLISH BOS DETECTED | Body closed above {recent_pivot_high:.2f}")
+        return True, recent_pivot_high, pivot_low_price
+    
+    return False, None, None
+
+
+def detect_bearish_bos_first(df, lookback=5):
+    """
+    STEP 1: Detect Bearish Break of Structure FIRST (before finding pivots).
+    
+    Logic:
+    1. Calculate pivot lows using lookback period
+    2. Get the most recent valid pivot low
+    3. Check if latest candle BODY (close) breaks below that pivot low
+    
+    Args:
+        df: DataFrame with OHLC data
+        lookback: Pivot lookback period
+    
+    Returns:
+        (bos_detected: bool, pivot_low_price: float, pivot_high_price: float)
+    """
+    if df is None or df.empty or len(df) < lookback * 2 + 1:
+        return False, None, None
+    
+    # Calculate pivot highs and lows
+    pivot_highs = calculate_pivot_highs(df, lookback=lookback)
+    pivot_lows = calculate_pivot_lows(df, lookback=lookback)
+    
+    # Get most recent pivot low (support to break)
+    recent_pivot_low = get_most_recent_pivot(df, pivot_lows, return_price=True, use_high=False)
+    
+    if recent_pivot_low is None:
+        return False, None, None
+    
+    # Check if latest candle BODY closes BELOW the pivot low
+    latest_close = df.iloc[-1]['close']
+    
+    if latest_close < recent_pivot_low:
+        # BOS detected! Now find the pivot high BEFORE this breakout
+        pivot_high_price = get_pivot_high_before_low(df, pivot_highs, pivot_lows)
+        
+        logger.info(f"🔻 BEARISH BOS DETECTED | Body closed below {recent_pivot_low:.2f}")
+        return True, recent_pivot_low, pivot_high_price
+    
+    return False, None, None
+
+
+def get_pivot_low_before_high(df, pivot_highs, pivot_lows):
+    """
+    Find the pivot low that was established BEFORE the most recent pivot high.
+    This becomes the Main Range Low for bullish bias.
+    
+    Args:
+        df: DataFrame with OHLC
+        pivot_highs: Boolean series of pivot high locations
+        pivot_lows: Boolean series of pivot low locations
+    
+    Returns:
+        Price of the pivot low before the breakout
+    """
+    try:
+        # Get index of most recent pivot high
+        high_indices = df[pivot_highs].index.tolist()
+        if not high_indices:
+            return None
+        
+        last_high_idx = high_indices[-1]
+        
+        # Get all pivot lows before this high
+        low_indices = df[pivot_lows].index.tolist()
+        lows_before_high = [idx for idx in low_indices if idx < last_high_idx]
+        
+        if not lows_before_high:
+            # If no pivot low before high, use absolute lowest low in recent data
+            recent_data = df.iloc[-50:]  # Last 50 candles
+            return recent_data['low'].min()
+        
+        # Get the most recent pivot low before the high
+        last_low_idx = lows_before_high[-1]
+        return df.loc[last_low_idx, 'low']
+    
+    except Exception as e:
+        logger.error(f"Error finding pivot low before high: {e}")
+        # Fallback: return lowest low in recent data
+        return df.iloc[-50:]['low'].min()
+
+
+def get_pivot_high_before_low(df, pivot_highs, pivot_lows):
+    """
+    Find the pivot high that was established BEFORE the most recent pivot low.
+    This becomes the Main Range High for bearish bias.
+    
+    Args:
+        df: DataFrame with OHLC
+        pivot_highs: Boolean series of pivot high locations
+        pivot_lows: Boolean series of pivot low locations
+    
+    Returns:
+        Price of the pivot high before the breakout
+    """
+    try:
+        # Get index of most recent pivot low
+        low_indices = df[pivot_lows].index.tolist()
+        if not low_indices:
+            return None
+        
+        last_low_idx = low_indices[-1]
+        
+        # Get all pivot highs before this low
+        high_indices = df[pivot_highs].index.tolist()
+        highs_before_low = [idx for idx in high_indices if idx < last_low_idx]
+        
+        if not highs_before_low:
+            # If no pivot high before low, use absolute highest high in recent data
+            recent_data = df.iloc[-50:]
+            return recent_data['high'].max()
+        
+        # Get the most recent pivot high before the low
+        last_high_idx = highs_before_low[-1]
+        return df.loc[last_high_idx, 'high']
+    
+    except Exception as e:
+        logger.error(f"Error finding pivot high before low: {e}")
+        # Fallback: return highest high in recent data
+        return df.iloc[-50:]['high'].max()
+
 
 def detect_bullish_body_breakout(df, resistance_level):
     """

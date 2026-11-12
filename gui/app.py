@@ -43,6 +43,11 @@ app.layout = dbc.Container([
                     ], href="/", id="nav-dashboard", active="exact", className="mb-2"),
                     
                     dbc.NavLink([
+                        html.I(className="fas fa-layer-group me-2"),
+                        "Pairs Manager"
+                    ], href="/pairs", id="nav-pairs", active="exact", className="mb-2"),
+                    
+                    dbc.NavLink([
                         html.I(className="fas fa-chart-candlestick me-2"),
                         "Live Analysis"
                     ], href="/analysis", id="nav-analysis", active="exact", className="mb-2"),
@@ -61,6 +66,11 @@ app.layout = dbc.Container([
                         html.I(className="fas fa-chart-bar me-2"),
                         "Performance"
                     ], href="/performance", id="nav-performance", active="exact", className="mb-2"),
+                    
+                    dbc.NavLink([
+                        html.I(className="fas fa-layer-group me-2"),
+                        "Symbols"
+                    ], href="/symbols", id="nav-symbols", active="exact", className="mb-2"),
                     
                     dbc.NavLink([
                         html.I(className="fas fa-cog me-2"),
@@ -151,6 +161,9 @@ def display_page(pathname):
     elif pathname == '/performance':
         from gui.pages import performance_page
         return performance_page.layout
+    elif pathname == '/symbols':
+        from gui.pages import symbols_page
+        return symbols_page.layout
     elif pathname == '/settings':
         from gui.pages import settings_page
         return settings_page.layout

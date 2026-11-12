@@ -113,9 +113,51 @@ layout = dbc.Container([
                     
                     # Timeframes
                     html.H6("Timeframe Configuration", className="mb-3 text-info"),
+                    dbc.Alert([
+                        html.I(className="fas fa-info-circle me-2"),
+                        "Main Timeframe: Used to detect Main Market Structure (BOS)",
+                        html.Br(),
+                        "Minor Timeframe: Used to detect Minor Structure Shift (MSS)"
+                    ], color="info", className="mb-3"),
+                    
                     dbc.Row([
                         dbc.Col([
-                            dbc.Label("Main Timeframe (HTF)"),
+                            dbc.Label("Main Market Structure Timeframe"),
+                            dbc.Select(
+                                id="select-main-tf",
+                                options=[
+                                    {"label": "15 Minutes", "value": "M15"},
+                                    {"label": "30 Minutes", "value": "M30"},
+                                    {"label": "1 Hour", "value": "H1"},
+                                    {"label": "4 Hours (Default)", "value": "H4"},
+                                    {"label": "Daily", "value": "D1"},
+                                    {"label": "Weekly", "value": "W1"},
+                                ],
+                                value="H4"
+                            ),
+                            dbc.FormText("Main BOS detection timeframe")
+                        ], width=6),
+                        
+                        dbc.Col([
+                            dbc.Label("Minor MSS Timeframe"),
+                            dbc.Select(
+                                id="select-minor-tf",
+                                options=[
+                                    {"label": "5 Minutes", "value": "M5"},
+                                    {"label": "15 Minutes", "value": "M15"},
+                                    {"label": "30 Minutes", "value": "M30"},
+                                    {"label": "1 Hour (Default)", "value": "H1"},
+                                    {"label": "4 Hours", "value": "H4"},
+                                ],
+                                value="H1"
+                            ),
+                            dbc.FormText("Minor structure shift timeframe")
+                        ], width=6),
+                    ], className="mb-3"),
+                    
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Old HTF Setting (Legacy)"),
                             dbc.Select(
                                 id="select-htf",
                                 options=[
@@ -123,7 +165,8 @@ layout = dbc.Container([
                                     {"label": "4 Hours", "value": "H4"},
                                     {"label": "Daily", "value": "D1"},
                                 ],
-                                value="H4"
+                                value="H4",
+                                disabled=True
                             )
                         ], width=3),
                         

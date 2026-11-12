@@ -100,8 +100,22 @@ def main():
     
     elif choice == '2':
         print("\n🤖 Launching Trading Engine...")
-        print("   Press CTRL+C to stop\n")
-        run_trading_engine()
+        print("\nOptions:")
+        print("  a) Single Symbol Mode (original)")
+        print("  b) Multi-Symbol Mode (trade multiple pairs)")
+        
+        sub_choice = input("\nSelect (a/b): ").strip().lower()
+        
+        if sub_choice == 'b':
+            print("\n📊 Multi-Symbol Trading Engine")
+            print("   Configure symbols in Settings or symbol_manager.py")
+            print("   Press CTRL+C to stop\n")
+            from main_multi_symbol import main as multi_main
+            multi_main()
+        else:
+            print("\n📊 Single Symbol Trading Engine")
+            print("   Press CTRL+C to stop\n")
+            run_trading_engine()
     
     elif choice == '3':
         print("\n🚀 Launching Complete System...")

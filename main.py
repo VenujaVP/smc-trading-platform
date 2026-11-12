@@ -43,37 +43,40 @@ logger = logging.getLogger(__name__)
 # CORE LOGIC FUNCTIONS
 # ============================================================================
 
-def check_main_bos(state, htf_df):
+def check_main_bos(state, htf_df, main_pivot_lookback=5):
     """
-    Phase 1: Check for Main Break of Structure on HTF (4H).
+    Phase 1: Check for Main Break of Structure on HTF.
+    
+    UPDATED LOGIC:
+    1. First detect BOS using body breakout
+    2. Then find the appropriate High/Low after BOS confirmation
+    
+    Args:
+        state: MarketState object
+        htf_df: Higher timeframe DataFrame
+        main_pivot_lookback: Lookback period for pivot calculation
     """
     if state.phase != Phase.WAITING_FOR_MAIN_BOS:
         return
     
-    logger.debug("Checking for Main BOS...")
+    logger.debug("Checking for Main BOS (BOS detection first)...")
     
-    # Calculate pivots
-    pivot_highs = calculate_pivot_highs(htf_df, lookback=config.MAIN_PIVOT_LOOKBACK)
-    pivot_lows = calculate_pivot_lows(htf_df, lookback=config.MAIN_PIVOT_LOOKBACK)
+    # STEP 1: Check for BULLISH BOS first, then find levels
+    bullish_bos, pivot_high, pivot_low = detect_bullish_bos_first(htf_df, lookback=main_pivot_lookback)
     
-    # Get most recent pivots
-    recent_ph = get_most_recent_pivot(htf_df, pivot_highs, return_price=True, use_high=True)
-    recent_pl = get_most_recent_pivot(htf_df, pivot_lows, return_price=True, use_high=False)
-    
-    if recent_ph is None or recent_pl is None:
-        logger.debug("Insufficient pivot data")
+    if bullish_bos and pivot_high and pivot_low:
+        logger.info(f"🚀 BULLISH MAIN BOS DETECTED | Broke: {pivot_high:.2f}")
+        logger.info(f"   Main Range Low (easily detected): {pivot_low:.2f}")
+        state.set_bullish_bias(pivot_high_price=pivot_high, pivot_low_price=pivot_low)
         return
     
-    # Check for bullish BOS (body closes above recent pivot high)
-    if detect_bullish_body_breakout(htf_df, recent_ph):
-        logger.info(f"🚀 BULLISH MAIN BOS DETECTED | Broke: {recent_ph}")
-        state.set_bullish_bias(pivot_high_price=recent_ph, pivot_low_price=recent_pl)
-        return
+    # STEP 2: Check for BEARISH BOS first, then find levels
+    bearish_bos, pivot_low, pivot_high = detect_bearish_bos_first(htf_df, lookback=main_pivot_lookback)
     
-    # Check for bearish BOS (body closes below recent pivot low)
-    if detect_bearish_body_breakout(htf_df, recent_pl):
-        logger.info(f"🔻 BEARISH MAIN BOS DETECTED | Broke: {recent_pl}")
-        state.set_bearish_bias(pivot_high_price=recent_ph, pivot_low_price=recent_pl)
+    if bearish_bos and pivot_low and pivot_high:
+        logger.info(f"🔻 BEARISH MAIN BOS DETECTED | Broke: {pivot_low:.2f}")
+        logger.info(f"   Main Range High (easily detected): {pivot_high:.2f}")
+        state.set_bearish_bias(pivot_high_price=pivot_high, pivot_low_price=pivot_low)
         return
 
 
@@ -329,8 +332,8 @@ def main():
             # Execute the pipeline
             state.last_update = datetime.now()
             
-            # Phase 1: Main Structure
-            check_main_bos(state, htf_df)
+            # Phase 1: Main Structure (with configurable lookback)
+            check_main_bos(state, htf_df, main_pivot_lookback=config.MAIN_PIVOT_LOOKBACK)
             update_main_range(state, htf_df, conf_df)
             
             # Phase 2: Pullback
