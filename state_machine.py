@@ -143,44 +143,68 @@ class MarketState:
         logger.info("Entry tracking reset")
     
     def set_bullish_bias(self, pivot_high_price, pivot_low_price, timestamp=None):
-        """Establish bullish bias after main BOS."""
+        """
+        Establish bullish bias after main BOS.
+        
+        IMPORTANT: Main Range High MUST track highest AFTER BOS, not the broken pivot!
+        - Main Range Low: Locked (confirmed)
+        - Main Range High: Initial value, will be updated dynamically
+        
+        Args:
+            pivot_high_price: The pivot high that was broken (NOT used as range high)
+            pivot_low_price: The main range low (locked)
+        """
         self.bias = MarketBias.BULLISH
         self.main_bos_detected = True
         self.main_bos_timestamp = timestamp or datetime.now()
         
-        # Set main range
+        # CORRECT: Lock Main Range Low
         self.main_range.low = pivot_low_price
         self.main_range.confirmed = True
         self.main_pivot_low.price = pivot_low_price
         self.main_pivot_low.confirmed = True
         
-        # Track unconfirmed high
-        self.main_range.high = pivot_high_price
+        # CORRECT: Start tracking Main Range High from current highest
+        # DO NOT use pivot_high_price directly - it will be updated dynamically
+        self.main_range.high = pivot_high_price  # Initial, will update
         self.main_pivot_high.price = pivot_high_price
+        self.main_pivot_high.confirmed = False  # Not confirmed yet
         
         self.phase = Phase.MAIN_RANGE_ESTABLISHED
         
-        logger.info(f"Bullish bias set | Low: {pivot_low_price} | High: {pivot_high_price}")
+        logger.info(f"Bullish bias set | LOCKED Low: {pivot_low_price} | TRACKING High (initial): {pivot_high_price}")
     
     def set_bearish_bias(self, pivot_high_price, pivot_low_price, timestamp=None):
-        """Establish bearish bias after main BOS."""
+        """
+        Establish bearish bias after main BOS.
+        
+        IMPORTANT: Main Range Low MUST track lowest AFTER BOS, not the broken pivot!
+        - Main Range High: Locked (confirmed)
+        - Main Range Low: Initial value, will be updated dynamically
+        
+        Args:
+            pivot_high_price: The main range high (locked)
+            pivot_low_price: The pivot low that was broken (NOT used as range low)
+        """
         self.bias = MarketBias.BEARISH
         self.main_bos_detected = True
         self.main_bos_timestamp = timestamp or datetime.now()
         
-        # Set main range
+        # CORRECT: Lock Main Range High
         self.main_range.high = pivot_high_price
         self.main_range.confirmed = True
         self.main_pivot_high.price = pivot_high_price
         self.main_pivot_high.confirmed = True
         
-        # Track unconfirmed low
-        self.main_range.low = pivot_low_price
+        # CORRECT: Start tracking Main Range Low from current lowest
+        # DO NOT use pivot_low_price directly - it will be updated dynamically
+        self.main_range.low = pivot_low_price  # Initial, will update
         self.main_pivot_low.price = pivot_low_price
+        self.main_pivot_low.confirmed = False  # Not confirmed yet
         
         self.phase = Phase.MAIN_RANGE_ESTABLISHED
         
-        logger.info(f"Bearish bias set | High: {pivot_high_price} | Low: {pivot_low_price}")
+        logger.info(f"Bearish bias set | LOCKED High: {pivot_high_price} | TRACKING Low (initial): {pivot_low_price}")
     
     def update_unconfirmed_high(self, new_high):
         """Update the unconfirmed high of main range."""

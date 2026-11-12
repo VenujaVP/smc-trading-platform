@@ -91,40 +91,46 @@ def detect_bullish_bos_first(df, lookback=5):
     """
     STEP 1: Detect Bullish Break of Structure FIRST (before finding pivots).
     
+    IMPORTANT: NO REPAINTING
+    - Uses only CONFIRMED candles (df.iloc[:-1] - excludes current incomplete candle)
+    - Latest confirmed close is df.iloc[-1]['close']
+    
     Logic:
-    1. Calculate pivot highs using lookback period
+    1. Calculate pivot highs using confirmed candles only
     2. Get the most recent valid pivot high
-    3. Check if latest candle BODY (close) breaks above that pivot high
+    3. Check if latest CONFIRMED candle BODY breaks above pivot high
     
     Args:
         df: DataFrame with OHLC data
         lookback: Pivot lookback period
     
     Returns:
-        (bos_detected: bool, pivot_high_price: float, pivot_low_price: float)
+        (bos_detected: bool, pivot_high_broken: float, main_range_low: float)
     """
-    if df is None or df.empty or len(df) < lookback * 2 + 1:
+    if df is None or df.empty or len(df) < lookback * 2 + 2:
         return False, None, None
     
-    # Calculate pivot highs and lows
-    pivot_highs = calculate_pivot_highs(df, lookback=lookback)
-    pivot_lows = calculate_pivot_lows(df, lookback=lookback)
+    # Use only confirmed candles for pivot calculation (exclude current candle)
+    confirmed_df = df.iloc[:-1]  # All except the last candle
+    
+    # Calculate pivots on confirmed candles only
+    pivot_highs = calculate_pivot_highs(confirmed_df, lookback=lookback)
+    pivot_lows = calculate_pivot_lows(confirmed_df, lookback=lookback)
     
     # Get most recent pivot high (resistance to break)
-    recent_pivot_high = get_most_recent_pivot(df, pivot_highs, return_price=True, use_high=True)
+    recent_pivot_high = get_most_recent_pivot(confirmed_df, pivot_highs, return_price=True, use_high=True)
     
     if recent_pivot_high is None:
         return False, None, None
     
-    # Check if latest candle BODY closes ABOVE the pivot high
+    # Check if latest CONFIRMED candle BODY closes ABOVE the pivot high
     latest_close = df.iloc[-1]['close']
     
     if latest_close > recent_pivot_high:
-        # BOS detected! Now find the pivot low BEFORE this breakout
-        # Get the pivot low that was established before the most recent pivot high
-        pivot_low_price = get_pivot_low_before_high(df, pivot_highs, pivot_lows)
+        # BOS detected! Find the pivot low BEFORE this breakout
+        pivot_low_price = get_pivot_low_before_high(confirmed_df, pivot_highs, pivot_lows)
         
-        logger.info(f"🚀 BULLISH BOS DETECTED | Body closed above {recent_pivot_high:.2f}")
+        logger.info(f"🚀 BULLISH BOS DETECTED | Broken: {recent_pivot_high:.2f} | Main Low: {pivot_low_price:.2f}")
         return True, recent_pivot_high, pivot_low_price
     
     return False, None, None
@@ -134,39 +140,46 @@ def detect_bearish_bos_first(df, lookback=5):
     """
     STEP 1: Detect Bearish Break of Structure FIRST (before finding pivots).
     
+    IMPORTANT: NO REPAINTING
+    - Uses only CONFIRMED candles (excludes current incomplete candle)
+    - Latest confirmed close is df.iloc[-1]['close']
+    
     Logic:
-    1. Calculate pivot lows using lookback period
+    1. Calculate pivot lows using confirmed candles only
     2. Get the most recent valid pivot low
-    3. Check if latest candle BODY (close) breaks below that pivot low
+    3. Check if latest CONFIRMED candle BODY breaks below pivot low
     
     Args:
         df: DataFrame with OHLC data
         lookback: Pivot lookback period
     
     Returns:
-        (bos_detected: bool, pivot_low_price: float, pivot_high_price: float)
+        (bos_detected: bool, pivot_low_broken: float, main_range_high: float)
     """
-    if df is None or df.empty or len(df) < lookback * 2 + 1:
+    if df is None or df.empty or len(df) < lookback * 2 + 2:
         return False, None, None
     
-    # Calculate pivot highs and lows
-    pivot_highs = calculate_pivot_highs(df, lookback=lookback)
-    pivot_lows = calculate_pivot_lows(df, lookback=lookback)
+    # Use only confirmed candles for pivot calculation (exclude current candle)
+    confirmed_df = df.iloc[:-1]
+    
+    # Calculate pivots on confirmed candles only
+    pivot_highs = calculate_pivot_highs(confirmed_df, lookback=lookback)
+    pivot_lows = calculate_pivot_lows(confirmed_df, lookback=lookback)
     
     # Get most recent pivot low (support to break)
-    recent_pivot_low = get_most_recent_pivot(df, pivot_lows, return_price=True, use_high=False)
+    recent_pivot_low = get_most_recent_pivot(confirmed_df, pivot_lows, return_price=True, use_high=False)
     
     if recent_pivot_low is None:
         return False, None, None
     
-    # Check if latest candle BODY closes BELOW the pivot low
+    # Check if latest CONFIRMED candle BODY closes BELOW the pivot low
     latest_close = df.iloc[-1]['close']
     
     if latest_close < recent_pivot_low:
-        # BOS detected! Now find the pivot high BEFORE this breakout
-        pivot_high_price = get_pivot_high_before_low(df, pivot_highs, pivot_lows)
+        # BOS detected! Find the pivot high BEFORE this breakout
+        pivot_high_price = get_pivot_high_before_low(confirmed_df, pivot_highs, pivot_lows)
         
-        logger.info(f"🔻 BEARISH BOS DETECTED | Body closed below {recent_pivot_low:.2f}")
+        logger.info(f"🔻 BEARISH BOS DETECTED | Broken: {recent_pivot_low:.2f} | Main High: {pivot_high_price:.2f}")
         return True, recent_pivot_low, pivot_high_price
     
     return False, None, None

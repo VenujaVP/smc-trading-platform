@@ -77,16 +77,26 @@ def check_main_bos_for_symbol(state, htf_df, symbol_config: SymbolConfig):
 
 
 def update_main_range_for_symbol(state, htf_df, conf_df, symbol_config: SymbolConfig):
-    """Phase 1 Continued: Update and confirm main range."""
+    """
+    Phase 1 Continued: Update and confirm main range.
+    
+    CRITICAL: Track the ACTUAL highest/lowest reached AFTER BOS, not the broken pivot.
+    """
     if state.phase != Phase.MAIN_RANGE_ESTABLISHED:
         return
     
-    current_high = htf_df['high'].max()
-    current_low = htf_df['low'].min()
-    
     if state.bias == MarketBias.BULLISH:
-        state.update_unconfirmed_high(current_high)
+        # Find highest HIGH reached since BOS (dynamic tracking)
+        # Use recent window to track the move after BOS
+        recent_window = htf_df.iloc[-20:]  # Last 20 candles
+        current_highest = recent_window['high'].max()
         
+        # Update Main Range High dynamically (NOT locked)
+        if current_highest > state.main_range.high:
+            state.update_unconfirmed_high(current_highest)
+            logger.debug(f"Main Range High updated: {current_highest:.2f}")
+        
+        # Confirm Main Range High when 1H shows bearish BOS
         conf_pivot_highs = calculate_pivot_highs(conf_df, lookback=symbol_config.minor_pivot_lookback)
         recent_conf_ph = get_most_recent_pivot(conf_df, conf_pivot_highs, return_price=True, use_high=True)
         
@@ -94,8 +104,16 @@ def update_main_range_for_symbol(state, htf_df, conf_df, symbol_config: SymbolCo
             state.confirm_main_high()
     
     elif state.bias == MarketBias.BEARISH:
-        state.update_unconfirmed_low(current_low)
+        # Find lowest LOW reached since BOS (dynamic tracking)
+        recent_window = htf_df.iloc[-20:]
+        current_lowest = recent_window['low'].min()
         
+        # Update Main Range Low dynamically (NOT locked)
+        if current_lowest < state.main_range.low:
+            state.update_unconfirmed_low(current_lowest)
+            logger.debug(f"Main Range Low updated: {current_lowest:.2f}")
+        
+        # Confirm Main Range Low when 1H shows bullish BOS
         conf_pivot_lows = calculate_pivot_lows(conf_df, lookback=symbol_config.minor_pivot_lookback)
         recent_conf_pl = get_most_recent_pivot(conf_df, conf_pivot_lows, return_price=True, use_high=False)
         

@@ -142,7 +142,7 @@ class OrderExecutor:
     
     def place_buy_limit(self, entry_price, stop_loss, take_profit, lot_size, comment=None):
         """
-        Place a BUY LIMIT order.
+        Place a BUY LIMIT order with DUPLICATE PREVENTION.
         
         Args:
             entry_price: Limit order price
@@ -154,6 +154,20 @@ class OrderExecutor:
         Returns:
             OrderSendResult object or None
         """
+        # CRITICAL: Check for existing pending orders FIRST (duplicate prevention)
+        existing_orders = self.get_pending_orders()
+        if len(existing_orders) > 0:
+            logger.warning(f"[{self.symbol}] Pending order already exists - skipping duplicate")
+            for order in existing_orders:
+                logger.info(f"  Existing: {order.type} @ {order.price_open} | Ticket: {order.ticket}")
+            return None
+        
+        # Check for existing open positions
+        existing_positions = self.get_open_positions()
+        if len(existing_positions) > 0:
+            logger.warning(f"[{self.symbol}] Position already open - skipping duplicate")
+            return None
+        
         symbol_info = mt5.symbol_info(self.symbol)
         if symbol_info is None:
             logger.error(f"Symbol {self.symbol} not found")
@@ -179,7 +193,7 @@ class OrderExecutor:
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
         
-        logger.info(f"Placing BUY LIMIT: {lot_size} lots @ {entry_price} | SL: {stop_loss} | TP: {take_profit}")
+        logger.info(f"[{self.symbol}] Placing BUY LIMIT: {lot_size} lots @ {entry_price} | SL: {stop_loss} | TP: {take_profit}")
         
         result = mt5.order_send(request)
         
@@ -191,12 +205,12 @@ class OrderExecutor:
             logger.error(f"Order failed: {result.retcode} - {result.comment}")
             return None
         
-        logger.info(f"✓ BUY LIMIT order placed successfully | Order: {result.order}")
+        logger.info(f"✓ [{self.symbol}] BUY LIMIT placed | Order: {result.order}")
         return result
     
     def place_sell_limit(self, entry_price, stop_loss, take_profit, lot_size, comment=None):
         """
-        Place a SELL LIMIT order.
+        Place a SELL LIMIT order with DUPLICATE PREVENTION.
         
         Args:
             entry_price: Limit order price
@@ -208,6 +222,20 @@ class OrderExecutor:
         Returns:
             OrderSendResult object or None
         """
+        # CRITICAL: Check for existing pending orders FIRST (duplicate prevention)
+        existing_orders = self.get_pending_orders()
+        if len(existing_orders) > 0:
+            logger.warning(f"[{self.symbol}] Pending order already exists - skipping duplicate")
+            for order in existing_orders:
+                logger.info(f"  Existing: {order.type} @ {order.price_open} | Ticket: {order.ticket}")
+            return None
+        
+        # Check for existing open positions
+        existing_positions = self.get_open_positions()
+        if len(existing_positions) > 0:
+            logger.warning(f"[{self.symbol}] Position already open - skipping duplicate")
+            return None
+        
         symbol_info = mt5.symbol_info(self.symbol)
         if symbol_info is None:
             logger.error(f"Symbol {self.symbol} not found")
@@ -233,7 +261,7 @@ class OrderExecutor:
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
         
-        logger.info(f"Placing SELL LIMIT: {lot_size} lots @ {entry_price} | SL: {stop_loss} | TP: {take_profit}")
+        logger.info(f"[{self.symbol}] Placing SELL LIMIT: {lot_size} lots @ {entry_price} | SL: {stop_loss} | TP: {take_profit}")
         
         result = mt5.order_send(request)
         
@@ -245,7 +273,7 @@ class OrderExecutor:
             logger.error(f"Order failed: {result.retcode} - {result.comment}")
             return None
         
-        logger.info(f"✓ SELL LIMIT order placed successfully | Order: {result.order}")
+        logger.info(f"✓ [{self.symbol}] SELL LIMIT placed | Order: {result.order}")
         return result
     
     def get_open_positions(self):
